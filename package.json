@@ -10,6 +10,7 @@
     "hardhat:deploy": "npx hardhat run src/web3_contracts/scripts/deploy.js --network localhost"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2",
     "next": "14.2.14",
     "react": "^18",
     "react-dom": "^18"
