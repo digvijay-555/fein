@@ -11,7 +11,7 @@ export const CreateSong = () => {
 
 
 
-    const [_tokenSupply, setTokenSupply] = useState<number>(0);
+    const [_tokenSupply, setTokenSupply] = useState<bigint>(BigInt(0));
     const [_tokenId, setTokenId] = useState(0);
     const [_percentageShare, setPercentageShare] = useState<number>(0);
     
@@ -54,7 +54,7 @@ export const CreateSong = () => {
     const _geturi = async () => {
         if (contract) {
             try {
-                const tx = await contract.geturi(ethers.BigNumber.from(1));
+                const tx = await contract.geturi(ethers.BigNumber.from(0));
                 console.log(tx);
           } catch (error) {
             console.error('Error:', error);
@@ -69,7 +69,7 @@ export const CreateSong = () => {
 
 
                 const totalSupply = await contract.tokenData(ethers.BigNumber.from(0));
-                const tokenSupply = totalSupply.tokenSupply;
+                const tokenSupply = totalSupply.countoftotalsupply;
                 const totalfractionalamount = totalSupply.totalFractionalAmount;
                 const float_tokenSupply = parseFloat(tokenSupply.toString());
                 const float_totalf = parseFloat(totalfractionalamount.toString());
@@ -78,7 +78,7 @@ export const CreateSong = () => {
                 const tx = await contract.buyStake(ethers.BigNumber.from(0),{value: (amount.toString())});
                 await tx.wait();
 
-                console.log(tokenSupply);
+                console.log(parseInt(tokenSupply));
                 // console.log(totalSupply);
             } catch (error) {
                 console.error('Error:', error);
@@ -102,6 +102,79 @@ export const CreateSong = () => {
         }
       }
 
+      const _releaseSong = async () => {
+        if (contract) {
+            try {
+                const tx = await contract.releaseSong(ethers.BigNumber.from(0));
+                await tx.wait(); 
+          } catch (error) {
+            console.error('Error:', error);
+            alert('Failed.');
+          }
+        }
+      }
+
+      const _destributeartistToken = async () => {
+        if (contract) {
+            try {
+                const tx = await contract.artistTokenSales(ethers.BigNumber.from(0));
+                await tx.wait(); 
+          } catch (error) {
+            console.error('Error:', error);
+            alert('Failed.');
+          }
+        }
+      }
+
+      const _getparticipents = async () => {
+        if (contract) {
+            try {
+              const tx = await contract.participants(ethers.BigNumber.from(0), ethers.BigNumber.from(0));
+
+              console.log(tx.tokenSupply.toString());
+          } catch (error) {
+            console.error('Error:', error);
+            alert('Failed.');
+          }
+        }
+      }
+      
+      const _addRevenueGen = async () => {
+        if (contract) {
+            try {
+
+              const amount = "4000000000000000000";
+              const tx = await contract.addRevenueGen(ethers.BigNumber.from(0),{value: (ethers.BigNumber.from(amount))} );
+
+              console.log(tx.tokenSupply.toString());
+          } catch (error) {
+            console.error('Error:', error);
+            alert('Failed.');
+          }
+        }
+      }
+
+
+      //_distributeRevenue
+      const _distributeRevenue = async () => {
+        if (contract) {
+            try {
+              const tx = await contract.distributeRevenue(ethers.BigNumber.from(0));
+              await tx.wait();
+          } catch (error) {
+            console.error('Error:', error);
+            alert('Failed.');
+          }
+        }
+      }
+
+
+
+
+
+
+
+
 
 
 
@@ -123,7 +196,7 @@ export const CreateSong = () => {
         <input
           type="text"
           value={_tokenSupply}
-          onChange={(e) => setTokenSupply(Number(e.target.value))}
+          onChange={(e) => setTokenSupply(BigInt(e.target.value))}
           placeholder="tokenId"
         />
         <p>tokenSupply: {_tokenSupply.toString()}</p>
@@ -137,10 +210,17 @@ export const CreateSong = () => {
         />
         <p>PercentageShare: {_percentageShare.toString()}</p>
         </div>
+        <div className="flex">
         <button onClick={_geturi}>Get URI</button>
 
         <button onClick={_buystake}>Buy Stake</button>
         <button onClick={_getremainingToken}>Get Remaining Token</button>
+        <button onClick={_releaseSong}>Release Song</button>
+        <button onClick={_destributeartistToken}>Distribute Artist Token</button>
+        <button onClick={_getparticipents}>Get Participents</button>
+        <button onClick={_addRevenueGen}>Add Revenue Gen</button>
+        <button onClick={_distributeRevenue}>Distribute Revenue</button>
+        </div>
         </div>
     );
 

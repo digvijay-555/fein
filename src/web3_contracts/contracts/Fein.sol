@@ -9,46 +9,64 @@ contract Fein is ERC1155 {
     address public contractOwner;
 
     struct data {
-        uint tokenSupply;
+        uint256 tokenSupply;
         string uri;
         address creator;
-        uint countoftotalsupply;
+        uint256 countoftotalsupply;
         // address[] participants;
-        uint fundsCollected;
-        uint revenue;
-        uint totalFractionalAmount;
+        uint256 fundsCollected;
+        uint256 revenue;
+        uint256 totalFractionalAmount;
         // mapping(address => uint) fractionalOwnership;
         bool soldOut;
         bool isReleased;
-        uint percentageShare;
+        uint256 percentageShare;
+        uint256 pricePerToken;
     }
 
-
     mapping(uint256 => data) public tokenData;
-    mapping (uint => address[]) public participants;
-    mapping(uint=> mapping (address => uint)) public fractionalOwnership;
+    mapping(uint256 => address[]) public participants;
+    mapping(uint256 => mapping(address => uint256)) public fractionalOwnership;
 
-    event NFTMinted(uint256 indexed tokenId, address indexed creator, uint256 totalSupply, uint256 totalFractionalAmount);
+    event NFTMinted(
+        uint256 indexed tokenId,
+        address indexed creator,
+        uint256 totalSupply,
+        uint256 totalFractionalAmount
+    );
     event RevenueDistributed(uint256 indexed tokenId, uint256 amount);
     event FundsAdded(uint256 indexed tokenId, uint256 amount);
-    event StakePurchased(uint256 indexed tokenId, address indexed buyer, uint256 tokensPurchased, uint256 amountPaid);
+    event StakePurchased(
+        uint256 indexed tokenId,
+        address indexed buyer,
+        uint256 tokensPurchased,
+        uint256 amountPaid
+    );
 
-    constructor() ERC1155("https://apricot-adorable-buzzard-685.mypinata.cloud/ipfs/QmafYVRMa9aWj2QZACYeUfbDXttryS5SydazdijXcNVfms/") {
+    constructor()
+        ERC1155(
+            "https://apricot-adorable-buzzard-685.mypinata.cloud/ipfs/QmafYVRMa9aWj2QZACYeUfbDXttryS5SydazdijXcNVfms/"
+        )
+    {
         contractOwner = msg.sender;
     }
 
     // Mint a new NFT representing a song with fractional ownership
-    function mintNFT(uint256 _totalSupply, uint256 _totalFractionalAmount, uint _percentageShare) external {
+    function mintNFT(
+        uint256 _totalSupply,
+        uint256 _totalFractionalAmount,
+        uint256 _percentageShare
+    ) external {
         uint256 _id = currentTokenID;
 
         _mint(msg.sender, _id, _totalSupply, ""); // Mint one NFT with total supply representing fractions
         tokenData[_id].uri = string(
-                abi.encodePacked(
-                    "https://apricot-adorable-buzzard-685.mypinata.cloud/ipfs/QmafYVRMa9aWj2QZACYeUfbDXttryS5SydazdijXcNVfms/",
-                    Strings.toString(_id),
-                    ".json"
-                )
-            );
+            abi.encodePacked(
+                "https://apricot-adorable-buzzard-685.mypinata.cloud/ipfs/QmafYVRMa9aWj2QZACYeUfbDXttryS5SydazdijXcNVfms/",
+                Strings.toString(_id),
+                ".json"
+            )
+        );
         tokenData[_id].tokenSupply = _totalSupply;
         tokenData[_id].countoftotalsupply = _totalSupply;
         tokenData[_id].creator = msg.sender;
@@ -58,6 +76,9 @@ contract Fein is ERC1155 {
         tokenData[_id].soldOut = false;
         tokenData[_id].isReleased = false;
         tokenData[_id].percentageShare = _percentageShare;
+        tokenData[_id].pricePerToken =
+            tokenData[_id].totalFractionalAmount /
+            tokenData[_id].countoftotalsupply;
 
         emit NFTMinted(_id, msg.sender, _totalSupply, _totalFractionalAmount);
     }
@@ -68,7 +89,7 @@ contract Fein is ERC1155 {
     // }
 
     // Override the uri function to return the correct metadata URI
-    function geturi(uint _tokenid) public view returns (string memory) {
+    function geturi(uint256 _tokenid) public view returns (string memory) {
         return tokenData[_tokenid].uri;
     }
 
@@ -77,10 +98,13 @@ contract Fein is ERC1155 {
         uint256 availableFraction = tokenData[tokenId].tokenSupply;
         require(tokenData[tokenId].soldOut == false, "Token is sold out");
         require(availableFraction > 0, "No fractional ownership available");
-        require(availableFraction >= 1, "Not enough fractional ownership available");
+        require(
+            availableFraction >= 1,
+            "Not enough fractional ownership available"
+        );
 
-        uint256 pricePerToken = tokenData[tokenId].totalFractionalAmount / tokenData[tokenId].tokenSupply;
-        uint256 requiredAmount = pricePerToken;
+        //uint256 pricePerToken = tokenData[tokenId].totalFractionalAmount / tokenData[tokenId].countoftotalsupply;
+        uint256 requiredAmount = tokenData[tokenId].pricePerToken;
 
         // Ensure enough ETH is sent (should be handled by the front-end)
         require(msg.value >= requiredAmount, "Incorrect amount of ETH sent");
@@ -103,10 +127,12 @@ contract Fein is ERC1155 {
 
     // Distribute revenue to all token holders based on their fractional ownership
     function distributeRevenue(uint256 tokenId) public payable onlyOwner {
-        uint256 amountToDistribute = (tokenData[tokenId].revenue * tokenData[tokenId].percentageShare) / 100; 
-        
+        uint256 amountToDistribute = (tokenData[tokenId].revenue * tokenData[tokenId].percentageShare) / 100;
 
-        require(tokenData[tokenId].isReleased == true, "Song must be released to distribute revenue");
+        require(
+            tokenData[tokenId].isReleased == true,
+            "Song must be released to distribute revenue"
+        );
         require(amountToDistribute > 0, "No funds available for distribution");
 
         uint256 totalFraction = tokenData[tokenId].totalFractionalAmount;
@@ -114,9 +140,10 @@ contract Fein is ERC1155 {
 
         for (uint256 i = 0; i < participants[tokenId].length; i++) {
             address receiver = participants[tokenId][i];
-            uint256 holderFraction =  fractionalOwnership[tokenId][receiver];
+            uint256 holderFraction = fractionalOwnership[tokenId][receiver];
             if (holderFraction > 0) {
-                uint256 share = (amountToDistribute * holderFraction) / totalFraction;
+                uint256 share = (amountToDistribute * holderFraction) /
+                    tokenData[tokenId].countoftotalsupply;
                 payable(receiver).transfer(share);
             }
         }
@@ -126,14 +153,16 @@ contract Fein is ERC1155 {
         payable(tokenData[tokenId].creator).transfer(artistShare);
 
         // Distribute the revenue to participants
-        
 
         emit RevenueDistributed(tokenId, amountToDistribute);
     }
 
     // Function for the owner to add revenue to a specific NFT
     function addRevenueGen(uint256 tokenId) public payable onlyOwner {
-        require(tokenData[tokenId].totalFractionalAmount > 0, "NFT does not exist");
+        require(
+            tokenData[tokenId].totalFractionalAmount > 0,
+            "NFT does not exist"
+        );
         require(msg.value > 0, "No funds provided");
         tokenData[tokenId].revenue += msg.value;
 
@@ -149,17 +178,27 @@ contract Fein is ERC1155 {
 
     // Release the song (after all NFTs are sold)
     function releaseSong(uint256 tokenId) external onlyOwner {
-        require(tokenData[tokenId].isReleased == false, "Song is already released");
+        require(
+            tokenData[tokenId].isReleased == false,
+            "Song is already released"
+        );
         tokenData[tokenId].isReleased = true;
     }
 
     // Transfer funds to the artist after all tokens are sold
     function artistTokenSales(uint256 tokenId) public payable onlyOwner {
         require(tokenData[tokenId].isReleased == true, "Song not released yet");
-        payable(tokenData[tokenId].creator).transfer(tokenData[tokenId].fundsCollected);
+        payable(tokenData[tokenId].creator).transfer(
+            tokenData[tokenId].fundsCollected
+        );
     }
 
-    modifier onlyOwner {
+function withdrawToOwner() public  payable  onlyOwner {
+    // Transfer all the Ether in the contract to the owner
+    
+}
+
+    modifier onlyOwner() {
         require(msg.sender == contractOwner, "Not the owner");
         _;
     }

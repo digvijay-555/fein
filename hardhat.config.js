@@ -21,7 +21,7 @@ module.exports = {
     },
     ganache: {
       url: "http://127.0.0.1:7545",  // Default Ganache network URL
-      accounts: ["0x310c45f770d5d01ae3335574980a7fb56784a6f8bbdb8e2053f1e46fe596273e"] // Using private key from .env (optional)
+      accounts: ["0x3d5b54a1299f8a172ea23d18d3f6684295c52e7095b7d234d3b52941a015d20e"] // Using private key from .env (optional)
     }
   }
 };
