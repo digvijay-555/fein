@@ -2,8 +2,14 @@ const path = require("path");
 const fs = require("fs");
 const { artifacts } = require("hardhat");
 const { ethers } = require('hardhat');
+const { JsonRpcProvider } = require("@ethersproject/providers") ;
+
+
 
 async function main() {
+  const provider = new JsonRpcProvider("http://localhost:8545/");
+  const [deployer] = await ethers.getSigners();
+  console.log("Deploying contract with the account:", deployer.address);
   const Fein = await ethers.getContractFactory("Fein");
   const fein = await Fein.deploy();
 

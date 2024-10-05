@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "hardhat:deploy": "npx hardhat run src/web3_contracts/scripts/deploy.js --network localhost"
+    "hardhat:deploy": "npx hardhat run src/web3_contracts/scripts/deploy.js --network ganache"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2",
