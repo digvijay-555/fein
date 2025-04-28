@@ -11,7 +11,6 @@ Welcome to  **Sound-Stake**, an Music Staking Platform aims to address these cha
 Sound-Stake utilizes a diverse array of technologies to create seamless and engaging user experiences:
 
 - **Nextjs**: A powerful React framework for building server-side rendered applications, facilitating the development of dynamic and SEO-friendly components.
-- **Base**: An Ethereum Layer 2 blockchain that provides faster and cheaper transactions while maintaining the security of the Ethereum network.
 - **Solidity**: A smart contract programming language used to develop decentralized applications (dApps) on the Ethereum blockchain.
 - **Hardhat**: A development environment for compiling, deploying, testing, and debugging smart contracts on Ethereum-based blockchains.
 - **Pinata**:  A service for securely managing and sharing files on IPFS, often used for hosting decentralized media or metadata.
@@ -33,9 +32,4 @@ The platform gives artists direct access to their fans, allowing them to build s
 
 - **Decentralization and Transparency**: Using blockchain technology, the platform offers full transparency into how revenue is generated, distributed, and shared. Smart contracts automatically execute the distribution of funds, eliminating the need for intermediaries.
 Both artists and fans can track and verify the flow of funds and staking rewards in realtime.
-
-
-### Contract Deployment Address
-- **0x10184FCB656731B62E49A43e38B92B54980B1041**
-- [basescan](https://sepolia.basescan.org/address/0x10184FCB656731B62E49A43e38B92B54980B1041)
 
