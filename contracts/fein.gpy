@@ -1,24 +1,35 @@
-# { "Depends": "py-genlayer:test" }
+# { "Depends": "py-genlayer:std" }
 from genlayer import *
 
-class Fein(gl.Contract):
-    # State variables
-    currentTokenID: int
-    contractOwner: address
+class TokenData(gl.Struct):
+    tokenSupply: int
+    countOfTotalSupply: int
+    uri: str
+    creator: Address
+    fundsCollected: int
+    revenue: int
+    totalFractionalAmount: int
+    soldOut: bool
+    isReleased: bool
+    percentageShare: int
+    pricePerToken: int
 
-    tokenData: dict  # mapping(uint256 => data)
-    participants: dict  # mapping(uint256 => List[address])
-    fractionalOwnership: dict  # mapping(uint256 => mapping(address => uint256))
+class Fein(gl.Contract):
+    currentTokenID: int
+    contractOwner: Address
+    tokenData: gl.Mapping[int, TokenData]
+    participants: gl.Mapping[int, gl.List[Address]]
+    fractionalOwnership: gl.Mapping[int, gl.Mapping[Address, int]]
 
     def __init__(self):
         self.currentTokenID = 0
-        self.contractOwner = gl.msg.sender
-        self.tokenData = {}
-        self.participants = {}
-        self.fractionalOwnership = {}
+        self.contractOwner = gl.sender()
+        self.tokenData = gl.Mapping()
+        self.participants = gl.Mapping()
+        self.fractionalOwnership = gl.Mapping()
 
     @gl.public.view
-    def getContractOwner(self) -> address:
+    def getContractOwner(self) -> Address:
         return self.contractOwner
 
     @gl.public.write
@@ -27,68 +38,76 @@ class Fein(gl.Contract):
 
         uri = f"https://apricot-adorable-buzzard-685.mypinata.cloud/ipfs/QmafYVRMa9aWj2QZACYeUfbDXttryS5SydazdijXcNVfms/{id}.json"
 
-        self.tokenData[id] = {
-            "tokenSupply": totalSupply,
-            "countoftotalsupply": totalSupply,
-            "uri": uri,
-            "creator": gl.msg.sender,
-            "fundsCollected": 0,
-            "revenue": 0,
-            "totalFractionalAmount": totalFractionalAmount,
-            "soldOut": False,
-            "isReleased": False,
-            "percentageShare": percentageShare,
-            "pricePerToken": totalFractionalAmount // totalSupply
-        }
-        self.participants[id] = []
+        self.tokenData[id] = TokenData(
+            tokenSupply=totalSupply,
+            countOfTotalSupply=totalSupply,
+            uri=uri,
+            creator=gl.sender(),
+            fundsCollected=0,
+            revenue=0,
+            totalFractionalAmount=totalFractionalAmount,
+            soldOut=False,
+            isReleased=False,
+            percentageShare=percentageShare,
+            pricePerToken=totalFractionalAmount // totalSupply
+        )
+        self.participants[id] = gl.List()
         self.currentTokenID += 1
 
         return id
 
     @gl.public.view
-    def geturi(self, tokenid: int) -> str:
-        return self.tokenData[tokenid]["uri"]
+    def geturi(self, tokenId: int) -> str:
+        return self.tokenData[tokenId].uri
 
     @gl.public.write.payable
     def buyStake(self, tokenId: int, number: int):
-        availableFraction = self.tokenData[tokenId]["tokenSupply"]
-        pricePerToken = self.tokenData[tokenId]["pricePerToken"]
+        token = self.tokenData[tokenId]
+        availableFraction = token.tokenSupply
+        pricePerToken = token.pricePerToken
         requiredAmount = pricePerToken * number
 
-        gl.require(self.tokenData[tokenId]["soldOut"] == False, "Token is sold out")
+        gl.require(token.soldOut == False, "Token is sold out")
         gl.require(availableFraction > 0, "No fractional ownership available")
         gl.require(availableFraction >= number, "Not enough fractional ownership available")
-        gl.require(gl.msg.value >= requiredAmount, "Incorrect amount of ETH sent")
+        gl.require(gl.value() >= requiredAmount, "Incorrect amount sent")
 
-        if self.fractionalOwnership.get(tokenId) is None:
-            self.fractionalOwnership[tokenId] = {}
+        if not self.fractionalOwnership.contains(tokenId):
+            self.fractionalOwnership[tokenId] = gl.Mapping()
 
-        if self.fractionalOwnership[tokenId].get(gl.msg.sender) is None:
-            self.participants[tokenId].append(gl.msg.sender)
-            self.fractionalOwnership[tokenId][gl.msg.sender] = 0
+        if not self.fractionalOwnership[tokenId].contains(gl.sender()):
+            participantList = self.participants[tokenId]
+            participantList.append(gl.sender())
+            self.participants[tokenId] = participantList
+            self.fractionalOwnership[tokenId][gl.sender()] = 0
 
-        self.fractionalOwnership[tokenId][gl.msg.sender] += number
-        self.tokenData[tokenId]["fundsCollected"] += gl.msg.value
-        self.tokenData[tokenId]["tokenSupply"] -= number
+        self.fractionalOwnership[tokenId][gl.sender()] += number
+        token.fundsCollected += gl.value()
+        token.tokenSupply -= number
 
-        if self.tokenData[tokenId]["tokenSupply"] == 0:
-            self.tokenData[tokenId]["soldOut"] = True
+        if token.tokenSupply == 0:
+            token.soldOut = True
+
+        self.tokenData[tokenId] = token
 
     @gl.public.write.payable
     def addRevenueGen(self, tokenId: int):
-        gl.require(self.tokenData[tokenId]["totalFractionalAmount"] > 0, "NFT does not exist")
-        gl.require(gl.msg.value > 0, "No funds provided")
-        self.tokenData[tokenId]["revenue"] += gl.msg.value
+        gl.require(self.tokenData.contains(tokenId), "NFT does not exist")
+        gl.require(gl.value() > 0, "No funds provided")
+        token = self.tokenData[tokenId]
+        token.revenue += gl.value()
+        self.tokenData[tokenId] = token
 
     @gl.public.write
     def distributeRevenue(self, tokenId: int):
-        gl.require(gl.msg.sender == self.contractOwner, "Not the owner")
-        gl.require(self.tokenData[tokenId]["isReleased"] == True, "Song must be released to distribute revenue")
+        gl.require(gl.sender() == self.contractOwner, "Not the owner")
+        token = self.tokenData[tokenId]
+        gl.require(token.isReleased == True, "Song must be released to distribute revenue")
 
-        revenue = self.tokenData[tokenId]["revenue"]
-        percentageShare = self.tokenData[tokenId]["percentageShare"]
+        revenue = token.revenue
+        percentageShare = token.percentageShare
         amountToDistribute = (revenue * percentageShare) // 100
-        totalFraction = self.tokenData[tokenId]["totalFractionalAmount"]
+        totalFraction = token.totalFractionalAmount
 
         gl.require(amountToDistribute > 0, "No funds available for distribution")
         gl.require(totalFraction > 0, "No fractions sold")
@@ -96,37 +115,39 @@ class Fein(gl.Contract):
         for holder in self.participants[tokenId]:
             holderFraction = self.fractionalOwnership[tokenId][holder]
             if holderFraction > 0:
-                share = (amountToDistribute * holderFraction) // self.tokenData[tokenId]["countoftotalsupply"]
+                share = (amountToDistribute * holderFraction) // token.countOfTotalSupply
                 gl.transfer(holder, share)
 
         artistShare = revenue - amountToDistribute
-        gl.transfer(self.tokenData[tokenId]["creator"], artistShare)
+        gl.transfer(token.creator, artistShare)
 
     @gl.public.write
     def releaseSong(self, tokenId: int):
-        gl.require(self.tokenData[tokenId]["isReleased"] == False, "Song is already released")
-        self.tokenData[tokenId]["isReleased"] = True
+        token = self.tokenData[tokenId]
+        gl.require(token.isReleased == False, "Song already released")
+        token.isReleased = True
+        self.tokenData[tokenId] = token
 
     @gl.public.write
     def artistTokenSales(self, tokenId: int):
-        gl.require(gl.msg.sender == self.contractOwner, "Not the owner")
-        gl.require(self.tokenData[tokenId]["isReleased"] == True, "Song not released yet")
-
-        funds = self.tokenData[tokenId]["fundsCollected"]
-        gl.transfer(self.tokenData[tokenId]["creator"], funds)
+        gl.require(gl.sender() == self.contractOwner, "Not the owner")
+        token = self.tokenData[tokenId]
+        gl.require(token.isReleased == True, "Song not released yet")
+        gl.transfer(token.creator, token.fundsCollected)
 
     @gl.public.write
     def withdrawFunds(self, tokenId: int):
-        gl.require(gl.msg.sender == self.contractOwner, "Not the owner")
-        balance = self.tokenData[tokenId]["revenue"]
+        gl.require(gl.sender() == self.contractOwner, "Not the owner")
+        token = self.tokenData[tokenId]
+        balance = token.revenue
         gl.require(balance > 0, "No funds to withdraw")
         gl.transfer(self.contractOwner, balance)
 
     @gl.public.write
     def withdrawToOwner(self):
-        gl.require(gl.msg.sender == self.contractOwner, "Not the owner")
-        gl.transfer(self.contractOwner, gl.balance)
+        gl.require(gl.sender() == self.contractOwner, "Not the owner")
+        gl.transfer(self.contractOwner, gl.balance())
 
     @gl.public.view
-    def getparticipants(self, tokenId: int) -> list:
+    def getparticipants(self, tokenId: int) -> gl.List[Address]:
         return self.participants[tokenId]
